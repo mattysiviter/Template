@@ -18,14 +18,16 @@ export const lucia = new Lucia(adapter, {
 			email: attributes.email,
 			displayName: attributes.displayName,
 			email_verified: attributes.email_verified,
-			setupTwoFactor: attributes.two_factor_secret !== null
+			two_factor_enabled: attributes.two_factor_enabled,
 		};
 	},
-	getSessionAttributes: (attributes) => {
-		return {
-			twoFACompleted: attributes.twoFACompleted,
-		};
-	},
+		getSessionAttributes: (attributes) => {
+			return {
+				// attributes has the type of DatabaseSessionAttributes
+				two_factor_verified: attributes.two_factor_verified
+			};
+	
+	}
 });
 
 declare module 'lucia' {
@@ -40,9 +42,9 @@ interface DatabaseUserAttributes {
 	email: string;
 	displayName: string;
 	email_verified: boolean;
-	two_factor_secret: string | null;
+	two_factor_enabled: boolean;
 }
 
-interface DatabaseSessionAttributes{
-	twoFACompleted: boolean;
+interface DatabaseSessionAttributes {
+	two_factor_verified: boolean;
 }

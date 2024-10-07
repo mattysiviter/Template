@@ -1,10 +1,10 @@
-import { lucia } from "$lib/server/auth";
-import { fail, redirect } from "@sveltejs/kit";
+import { lucia } from '$lib/server/auth';
+import { fail, redirect } from '@sveltejs/kit';
 
-import type { Actions, PageServerLoad } from "./$types";
+import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-    // Redirect to home page if someone tries to access this page directly
+	// Redirect to home page if someone tries to access this page directly
 	throw redirect(302, '/auth/login');
 };
 
@@ -16,9 +16,9 @@ export const actions: Actions = {
 		await lucia.invalidateSession(event.locals.session.id);
 		const sessionCookie = lucia.createBlankSessionCookie();
 		event.cookies.set(sessionCookie.name, sessionCookie.value, {
-			path: ".",
+			path: '.',
 			...sessionCookie.attributes
 		});
-		redirect(302, "/auth/login");
+		redirect(302, '/auth/login');
 	}
 };

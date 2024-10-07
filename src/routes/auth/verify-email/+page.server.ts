@@ -1,24 +1,23 @@
+import { prisma } from '$lib/server/prisma';
 import type { PageServerLoad, Actions } from './$types.js';
 import { fail, redirect } from '@sveltejs/kit';
-import { superValidate } from 'sveltekit-superforms';
+import { setError, superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
-import { verifyEmailFormSchema } from '$lib/schema.js';
+import { signUpFormSchema, verifyEmailFormSchema } from '$lib/schema.js';
+import { hash } from '@node-rs/argon2';
+import { generateIdFromEntropySize } from 'lucia';
 import { lucia } from '$lib/server/auth.js';
-import { prisma } from '$lib/server/prisma.js';
-import { verifyVerificationCode } from '$lib/server/emailVerification.js';
+import { generateEmailVerificationCode, sendVerificationCode, verifyVerificationCode } from '$lib/server/emailVerification.js';
 
 export const load: PageServerLoad = async (event) => {
-	if (!event.locals.user) redirect(302, "/auth/login");
-
-	if(event.locals.user.email_verified) redirect(302, "/dashboard");
-
+	if (event.locals.user && event.locals.user.email_verified) redirect(302, '/dashboard');
 	return {
-		form: await superValidate(zod(verifyEmailFormSchema))
+		verifyEmailform: await superValidate(zod(verifyEmailFormSchema))
 	};
 };
 
 export const actions: Actions = {
-	default: async (event) => {
+	verifyEmail: async (event) => {
 		const form = await superValidate(event, zod(verifyEmailFormSchema));
 		if (!form.valid) {
 			return fail(400, {
@@ -42,7 +41,7 @@ export const actions: Actions = {
 		const validCode = await verifyVerificationCode(user, code);
 
 		if (!validCode) {
-			return form.errors.code = ["Invalid code"]
+			return setError(form, 'code', 'Invalid Code');
 		}
 
 		await lucia.invalidateUserSessions(user.id);
@@ -55,13 +54,55 @@ export const actions: Actions = {
 			}
 		});
 
-		const session = await lucia.createSession(user.id, {});
+		const session = await lucia.createSession(user.id, {
+			two_factor_verified: true
+		});
 		const sessionCookie = lucia.createSessionCookie(session.id);
 		event.cookies.set(sessionCookie.name, sessionCookie.value, {
 			path: '.',
 			...sessionCookie.attributes
 		});
 
-		redirect(302, '/dashboard');
-	}
+		throw redirect(302, '/dashboard');
+	},
+
+	resendEmailVerification: async (event) => {
+		console.log("Email resend requested");
+	
+		const sessionId = event.cookies.get(lucia.sessionCookieName);
+		if (!sessionId) {
+		  console.log("No session found");
+		  return fail(401, { message: "No session found" });
+		}
+	
+		try {
+		  const { user } = await lucia.validateSession(sessionId);
+		  if (!user) {
+			console.log("Invalid session");
+			return fail(401, { message: "Invalid session" });
+		  }
+	
+		  const emailRecord = await prisma.emailVerificationCode.findUnique({
+			where: { userId: user.id },
+			select: { email: true }
+		  });
+
+		  
+	
+		  if (!emailRecord || !emailRecord.email) {
+			console.log("No email found for user");
+			return fail(400, { message: "No email associated with this account" });
+		  }
+	
+		  const verificationCode = await generateEmailVerificationCode(user.id, emailRecord.email);
+		  await sendVerificationCode(emailRecord.email, verificationCode);
+	
+		  console.log("Verification email sent successfully");
+		  return { success: true, message: "Verification email sent successfully" };
+		} catch (error) {
+		  console.error("Error in resendEmailVerification:", error);
+		  return fail(500, { message: "An unexpected error occurred" });
+		}
+	  }
+
 };

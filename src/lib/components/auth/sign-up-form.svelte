@@ -2,13 +2,19 @@
 	import * as Form from '$lib/components/ui/form';
 	import { Input } from '$lib/components/ui/input';
 	import { signUpFormSchema, type SignUpFormSchema } from '$lib/schema';
+	import { toast } from 'svelte-sonner';
 	import { type SuperValidated, type Infer, superForm } from 'sveltekit-superforms';
 	import { zodClient } from 'sveltekit-superforms/adapters';
 
 	export let data: SuperValidated<Infer<SignUpFormSchema>>;
 
 	const form = superForm(data, {
-		validators: zodClient(signUpFormSchema)
+		validators: zodClient(signUpFormSchema),
+		onResult({ result }) {
+			if (result.type === 'success') {
+				toast.success('Account Created');
+			}
+		}
 	});
 
 	const { form: formData, enhance } = form;

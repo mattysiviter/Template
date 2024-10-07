@@ -14,7 +14,7 @@
 	const { form: formData, enhance } = form;
 </script>
 
-<form method="POST" use:enhance>
+<form method="POST" action="?/verifyEmail" use:enhance>
 	<Form.Field {form} name="code">
 		<Form.Control let:attrs>
 			<Form.Label>Verify Code</Form.Label>

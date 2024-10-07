@@ -1,85 +1,137 @@
+import { prisma } from '$lib/server/prisma';
 import type { PageServerLoad, Actions } from './$types.js';
 import { fail, redirect } from '@sveltejs/kit';
-import { superValidate } from 'sveltekit-superforms';
+import { setError, superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
 import { backupCodesFormSchema, twoFactorAuthenticationFormSchema } from '$lib/schema';
-import { decodeHex } from 'oslo/encoding';
-import { TOTPController } from 'oslo/otp';
 import { lucia } from '$lib/server/auth.js';
-import { prisma } from '$lib/server/prisma.js';
+import { TOTPController } from 'oslo/otp';
+import { decodeHex } from 'oslo/encoding';
+import { generateBackupCode, retrieveBackupCode } from '$lib/server/twoFactorAuthentication.js';
 
 export const load: PageServerLoad = async (event) => {
-    // Check if user is already authenticated and has completed 2FA
-    if (event.locals.user && event.locals.session?.twoFACompleted) {
-        throw redirect(302, "/dashboard"); // Redirect to dashboard if 2FA is already completed
-    }
+	const sessionId = event.cookies.get(lucia.sessionCookieName);
+	
+	// If there's no session cookie, redirect to login
+	if (!sessionId) {
+	  throw redirect(302, '/auth/login');
+	}
+  
+	const { session } = await lucia.validateSession(sessionId);
+  
+	// If session is invalid, redirect to login
+	if (!session) {
+	  throw redirect(302, '/auth/login');
+	}
+  
+	// If two_factor_verified is true, redirect to dashboard
+	if (session.two_factor_verified) {
+	  throw redirect(302, '/dashboard');
+	}
+  
+	// If we get here, the user is logged in but hasn't completed 2FA
+	return {
+	  twoFactorAuthenticationForm: await superValidate(zod(twoFactorAuthenticationFormSchema)),
+	  backupCodesForm: await superValidate(zod(backupCodesFormSchema))
+	};
+  };
 
-    if(event.locals.user && !event.locals.user.setupTwoFactor){
-        throw redirect(302, "/dashboard");
-    }
-
-    // If user is not authenticated at all, redirect to login
-    if (!event.locals.user) {
-        throw redirect(302, "/auth/login");
-    }
-    
-    return {
-        twoFactorAuthenticationForm: await superValidate(zod(twoFactorAuthenticationFormSchema)),
-        backupCodesForm: await superValidate(zod(backupCodesFormSchema))
-    };
-};
-
-export const actions: Actions = {
-    default: async (event) => {
-        const form = await superValidate(event, zod(twoFactorAuthenticationFormSchema));
-        if (!form.valid) {
-            return fail(400, { form });
-        }
-        const { code: otp } = form.data;
-        const sessionId = event.cookies.get(lucia.sessionCookieName);
-
-        if (!sessionId) {
-            return fail(401, { form, message: 'No session found' });
-        }
-
-        const { user, session } = await lucia.validateSession(sessionId);
-
-        if (!user || !session) {
-            return fail(401, { form, message: 'Invalid session' });
-        }
-
-        const result = await prisma.user.findUnique({
-            where: { id: user.id },
-            select: { two_factor_secret: true }
-        });
-
-        if (!result?.two_factor_secret) {
-            return fail(400, { form, message: '2FA not set up for this user' });
-        }
-
-        const validOTP = await new TOTPController().verify(otp, decodeHex(result.two_factor_secret));
-
-        if (!validOTP) {
-            return fail(400, { form, message: 'Invalid 2-Factor Authentication code' });
-        }
-
-        // If the code is valid, update the session
-        await prisma.session.update({
-            where: { id: session.id },
-            data: { twoFACompleted: true }
-        });
-    
-        // Invalidate all other sessions for this user that haven't completed 2FA
-        await prisma.session.updateMany({
-            where: {
-                userId: user.id,
-                id: { not: session.id },
-                twoFACompleted: false
-            },
-            data: { expiresAt: new Date() }
-        });
-
-        // Redirect to dashboard after successful 2FA
-        throw redirect(302, "/dashboard");
-    }
-};
+  export const actions: Actions = {
+	verify2FA: async (event) => {
+		const form = await superValidate(event, zod(twoFactorAuthenticationFormSchema));
+		if (!form.valid) {
+		  return fail(400, { form });
+		}
+		const { code: otp } = form.data;
+		const sessionId = event.cookies.get(lucia.sessionCookieName);
+	  
+		if (!sessionId) {
+		  return fail(401, { form, message: 'No session found' });
+		}
+	  
+		try {
+		  const { user, session } = await lucia.validateSession(sessionId);
+	  
+		  if (!user || !session) {
+			return fail(401, { form, message: 'Invalid session' });
+		  }
+	  
+		  const result = await prisma.user.findUnique({
+			where: { id: user.id },
+			select: { two_factor_secret: true }
+		  });
+	  
+		  if (!result?.two_factor_secret) {
+			return fail(400, { form, message: '2FA not set up for this user' });
+		  }
+	  
+		  const validOTP = await new TOTPController().verify(otp, decodeHex(result.two_factor_secret));
+	  
+		  if (!validOTP) {
+			return setError(form, "code", 'Invalid 2-Factor Authentication code');
+		  }
+	  
+		  await lucia.invalidateSession(session.id);
+		  const newSession = await lucia.createSession(user.id, {
+			two_factor_verified: true
+		  });
+	  
+		  const newSessionCookie = lucia.createSessionCookie(newSession.id);
+		  event.cookies.set(newSessionCookie.name, newSessionCookie.value, {
+			path: '.',
+			...newSessionCookie.attributes
+		  });
+	  
+		} catch (error) {
+		  return fail(500, { form, message: 'An unexpected error occurred' });
+		}
+	  
+		throw redirect(302, '/dashboard');
+	  },
+  
+	verifyBackupCode: async (event) => {
+	  const form = await superValidate(event, zod(backupCodesFormSchema));
+	  if (!form.valid) {
+		return fail(400, { form });
+	  }
+	  const { backupCode } = form.data;
+	  const sessionId = event.cookies.get(lucia.sessionCookieName);
+	  if (!sessionId) {
+		return fail(401, { form, message: 'No session found' });
+	  }
+  
+	  try {
+		const { user, session } = await lucia.validateSession(sessionId);
+  
+		if (!user || !session) {
+		  return fail(401, { form, message: 'Invalid session' });
+		}
+  
+		const validBackupCode = await retrieveBackupCode(user.id);
+  
+		if (validBackupCode != backupCode) {
+		  form.errors.backupCode = ['Backup Code Not Valid'];
+		  return fail(400, { form });
+		}
+  
+		await generateBackupCode(user.id);
+  
+		// Update session to set two_factor_verified to true
+		await lucia.invalidateSession(session.id);
+		const newSession = await lucia.createSession(user.id, {
+		  two_factor_verified: true
+		});
+  
+		const newSessionCookie = lucia.createSessionCookie(newSession.id);
+		event.cookies.set(newSessionCookie.name, newSessionCookie.value, {
+		  path: '.',
+		  ...newSessionCookie.attributes
+		});
+	  } catch (error) {
+		console.error('Error in verifyBackupCode:', error);
+		return fail(500, { form, message: 'An unexpected error occurred' });
+	  }
+  
+	  throw redirect(302, '/dashboard');
+	}
+  };

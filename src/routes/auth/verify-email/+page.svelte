@@ -1,6 +1,10 @@
 <script lang="ts">
-	import type { PageData } from './$types.js';
-	import VerifyEmailForm from '$lib/components/verify-email-form.svelte';
+	import type { ActionData, PageData } from './$types.js';
+	import SignUpForm from '$lib/components/auth/sign-up-form.svelte';
+	import VerifyEmailForm from '$lib/components/auth/verify-email-form.svelte';
+	import { Button } from '$lib/components/ui/button/index.js';
+	import { enhance } from '$app/forms';
+
 	export let data: PageData;
 </script>
 
@@ -15,11 +19,13 @@
 				</p>
 			</div>
 			<div class="grid gap-4">
-				<VerifyEmailForm data={data.form} />
+				<VerifyEmailForm data={data.verifyEmailform} />
 			</div>
 			<div class="mt-4 text-center text-sm">
 				Didn't receive the email?
-				<a href="/auth/login" class="underline"> Resend verification email </a>
+				<form method="POST" action="?/resendEmailVerification">
+					<Button variant="link" type="submit">Resend verification email</Button>
+				</form>
 			</div>
 		</div>
 	</div>

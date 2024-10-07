@@ -1,7 +1,10 @@
 <script lang="ts">
 	import type { PageData } from './$types.js';
-	import TwoFactorAuthenticationForm from '$lib/components/two-factor-authentication-form.svelte';
-	import BackupCodesForm from '$lib/components/backup-codes-form.svelte';
+	import LoginForm from '$lib/components/auth/login-form.svelte';
+	import TwoFactorAuthenticationForm from '$lib/components/auth/two-factor-authentication-form.svelte';
+	import BackupCodesForm from '$lib/components/auth/backup-codes-form.svelte';
+	import VerifyEmailForm from '$lib/components/auth/verify-email-form.svelte';
+	import { Button } from '$lib/components/ui/button/index.js';
 	export let data: PageData;
 	let backupCodes: boolean = false;
 
@@ -24,17 +27,19 @@
 				<div class="mt-4 text-center text-sm">
 					Not Working?
 
-					<button
+					<Button
 						type="button"
+						variant="link"
 						on:click={() => backupCodesForm()}
-						class="cursor-pointer border-none bg-transparent p-0 text-base font-normal text-blue-600 underline hover:text-blue-800"
+						
 					>
 						Use backup codes
-					</button>
+				</Button>
 				</div>
 			</div>
 		</div>
 	{:else}
+		<!-- Backup Codes Form -->
 		<div class="flex items-center justify-center py-12">
 			<div class="mx-auto grid w-[350px] gap-6">
 				<div class="grid gap-2 text-center">
@@ -47,13 +52,14 @@
 				<div class="mt-4 text-center text-sm">
 					Back to two-factor-authentication
 
-					<button
+					<Button
 						type="button"
+						variant="link"
 						on:click={() => backupCodesForm()}
-						class="cursor-pointer border-none bg-transparent p-0 text-base font-normal text-blue-600 underline hover:text-blue-800"
+						
 					>
-						Use 2-Factor Authentication
-					</button>
+					Use 2-Factor Authentication
+				</Button>
 				</div>
 			</div>
 		</div>

@@ -19,17 +19,19 @@ model User {
   password_hash   String
   email_verified  Boolean   @default(false)
   two_factor_secret  String?
+  two_factor_enabled Boolean @default(false)
   displayName     String
   sessions        Session[]
   emailVerificationCodes EmailVerificationCode[]
   passwordResetTokens PasswordResetToken[]
+  backupCodes            BackupCode[]
 }
 
 model Session {
   id        String   @id
   userId    String
   expiresAt DateTime
-  twoFACompleted Boolean @default(false)
+  two_factor_verified Boolean  @default(false)
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -47,6 +49,15 @@ model EmailVerificationCode {
 model PasswordResetToken {
   tokenHash String   @unique
   userId    String   
+  expires_at DateTime
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model BackupCode {
+  id     String @id @default(cuid())
+  userId String @unique
+  code   String
   expires_at DateTime
 
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)

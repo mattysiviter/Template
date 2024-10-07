@@ -1,12 +1,6 @@
 <script>
 	import DashboardCard from '$lib/components/dashboard-card.svelte';
-	import {
-		RiDownload2Fill,
-		RiDatabase2Fill,
-		RiSearchEyeLine,
-		RiTerminalWindowFill,
-		RiBubbleChartFill
-	} from 'svelte-remixicon';
+	import { RiDownload2Fill, RiTerminalWindowFill, RiEraserFill } from 'svelte-remixicon';
 </script>
 
 <div
@@ -35,7 +29,7 @@
 			link="/scrub-metadata"
 			content="Scrub Video Metadata"
 			description="Scrub Metadata from your videos"
-			icon={RiBubbleChartFill}
+			icon={RiEraserFill}
 		/>
 	</div>
 </div>

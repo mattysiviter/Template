@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { PageData } from './$types.js';
-	import LoginForm from '$lib/components/login-form.svelte';
+	import type { ActionData, PageData } from './$types.js';
+	import LoginForm from '$lib/components/auth/login-form.svelte';
 	export let data: PageData;
 </script>
 
@@ -14,7 +14,7 @@
 				</p>
 			</div>
 			<div class="grid gap-4">
-				<LoginForm data={data.form} />
+				<LoginForm data={data.loginForm} />
 			</div>
 			<div class="mt-4 text-center text-sm">
 				Don&apos;t have an account?

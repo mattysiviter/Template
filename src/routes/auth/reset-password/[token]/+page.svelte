@@ -1,5 +1,5 @@
 <script lang="ts">
-	import NewPasswordForm from '$lib/components/new-password-form.svelte';
+	import NewPasswordForm from '$lib/components/auth/new-password-form.svelte';
 	import type { PageData } from './$types.js';
 	export let data: PageData;
 </script>

@@ -3,7 +3,7 @@ import type { PageServerLoad, Actions } from './$types.js';
 import { fail, redirect } from '@sveltejs/kit';
 import { setError, superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
-import { signUpFormSchema } from '$lib/schema.js';
+import { signUpFormSchema, verifyEmailFormSchema } from '$lib/schema.js';
 import { hash } from '@node-rs/argon2';
 import { generateIdFromEntropySize } from 'lucia';
 import { lucia } from '$lib/server/auth.js';
@@ -13,9 +13,10 @@ import {
 } from '$lib/server/emailVerification.js';
 
 export const load: PageServerLoad = async (event) => {
-	if (event.locals.user) redirect(302, "/dashboard");
+	if (event.locals.user && event.locals.user.email_verified) redirect(302, '/dashboard');
 	return {
-		form: await superValidate(zod(signUpFormSchema))
+		form: await superValidate(zod(signUpFormSchema)),
+		verifyEmailform: await superValidate(zod(verifyEmailFormSchema))
 	};
 };
 
@@ -60,13 +61,13 @@ export const actions: Actions = {
 		const verificationCode = await generateEmailVerificationCode(userId, email);
 		await sendVerificationCode(email, verificationCode);
 
-		const session = await lucia.createSession(userId, {});
+		const session = await lucia.createSession(user.id, {});
 		const sessionCookie = lucia.createSessionCookie(session.id);
 		event.cookies.set(sessionCookie.name, sessionCookie.value, {
-			path: '.',
+			path: '/',
 			...sessionCookie.attributes
 		});
 
-		redirect(302, '/auth/verify-email');
+		throw redirect(303, '/auth/verify-email');
 	}
 };

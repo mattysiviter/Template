@@ -14,7 +14,7 @@
 	const { form: formData, enhance } = form;
 </script>
 
-<form class="grid gap-2" method="POST" use:enhance>
+<form class="grid gap-2" action="?/login" method="POST" use:enhance>
 	<Form.Field {form} name="email">
 		<Form.Control let:attrs>
 			<Form.Label>Username</Form.Label>
@@ -27,9 +27,9 @@
 			<div class="flex items-center">
 				<Form.Label for="password">Password</Form.Label>
 				<a href="/auth/reset-password" class="ml-auto inline-block text-sm underline">
-				  Forgot your password?
+					Forgot your password?
 				</a>
-			  </div>
+			</div>
 			<Input {...attrs} bind:value={$formData.password} />
 		</Form.Control>
 		<Form.FieldErrors />

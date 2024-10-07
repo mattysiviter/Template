@@ -21,22 +21,21 @@ export const actions: Actions = {
 			});
 		}
 
-		const {email} = form.data;
+		const { email } = form.data;
 
 		const user = await prisma.user.findUnique({
 			where: {
-			  email: email,
-			},
-		  })
+				email: email
+			}
+		});
 
-		if(!user){
+		if (!user) {
 			return { form, success: true };
 		}
 
 		const verificationToken = await createPasswordResetToken(user.id);
 		const verificationLink = `http://localhost:5173/auth/reset-password/${verificationToken}`;
 		await sendPasswordResetToken(email, verificationLink);
-		
 
 		return { form, success: true };
 	}

@@ -10,15 +10,15 @@ const apiInstance = new brevo.TransactionalEmailsApi();
 // Configure API key authorization
 const apiKey = process.env.BREVO_API_KEY;
 if (!apiKey) {
-    throw new Error('BREVO_API_KEY environment variable is not set');
+	throw new Error('BREVO_API_KEY environment variable is not set');
 }
 apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, apiKey);
 
 export async function sendPasswordResetToken(to: string, verificationLink: string): Promise<void> {
-    let sendSmtpEmail = new brevo.SendSmtpEmail();
+	let sendSmtpEmail = new brevo.SendSmtpEmail();
 
-    sendSmtpEmail.subject = 'Reset Your Password';
-    sendSmtpEmail.htmlContent = `
+	sendSmtpEmail.subject = 'Reset Your Password';
+	sendSmtpEmail.htmlContent = `
     <html>
       <body>
         <h1>Reset Your Password</h1>
@@ -29,19 +29,17 @@ export async function sendPasswordResetToken(to: string, verificationLink: strin
       </body>
     </html>
   `;
-    sendSmtpEmail.sender = { name: 'ContentMolf', email: 'matthewsiviter@contentmolf.com' };
-    sendSmtpEmail.to = [{ email: to, name: 'User' }];
+	sendSmtpEmail.sender = { name: 'ContentMolf', email: 'matthewsiviter@contentmolf.com' };
+	sendSmtpEmail.to = [{ email: to, name: 'User' }];
 
-    try {
-        const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-        console.log('Password reset email sent successfully');
-    } catch (error) {
-        console.error('Error sending password reset email:', error);
-        throw error;
-    }
+	try {
+		const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+		console.log('Password reset email sent successfully');
+	} catch (error) {
+		console.error('Error sending password reset email:', error);
+		throw error;
+	}
 }
-
-
 
 export async function createPasswordResetToken(userId: string): Promise<string> {
 	// Optionally invalidate all existing tokens
